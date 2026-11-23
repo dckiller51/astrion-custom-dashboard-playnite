@@ -1,11 +1,26 @@
 # Astrion Custom Dashboard for Playnite
 
+[![GH-release](https://img.shields.io/github/v/release/dckiller51/astrion-custom-dashboard-playnite.svg?style=flat-square)](https://github.com/dckiller51/astrion-custom-dashboard-playnite/releases/latest)
+[![GH-downloads](https://img.shields.io/github/downloads/dckiller51/astrion-custom-dashboard-playnite/total?style=flat-square)](https://github.com/dckiller51/astrion-custom-dashboard-playnite/releases)
+[![Build](https://img.shields.io/github/actions/workflow/status/dckiller51/astrion-custom-dashboard-playnite/build.yml?style=flat-square&label=build)](https://github.com/dckiller51/astrion-custom-dashboard-playnite/actions/workflows/build.yml)
+[![Playnite](https://img.shields.io/badge/Playnite-10-1C93D1?style=flat-square)](https://playnite.link)
+[![Astrion Custom Dashboard](https://img.shields.io/badge/Astrion_Custom_Dashboard-app-00E5FF?style=flat-square)](https://github.com/dckiller51/astrion-custom-dashboard)
+[![Ko-fi](https://img.shields.io/badge/Ko--fi-Buy_me_a_coffee-F16061?style=flat-square&logo=ko-fi&logoColor=white)](https://ko-fi.com/dckiller)
+
 A [Playnite](https://playnite.link) extension that lets the [Astrion Custom Dashboard](https://github.com/dckiller51/astrion-custom-dashboard)
 remote see and drive your gaming PC, with no Home Assistant:
 
 - the game running, with its cover
 - your installed games, started from the remote
 - turning the PC on (Wake-on-LAN, from the remote) and off
+
+<p align="center">
+  <img src="images/playing-diablo-iv.png" width="240" alt="The remote showing Diablo IV running on the PC, with its cover">
+  &nbsp;
+  <img src="images/playing-cronos.png" width="240" alt="Another game picked in the remote's list of games, now running">
+</p>
+
+The game running, with its cover, and your games in a list: pick one, it starts on the PC.
 
 ## Install
 
@@ -40,4 +55,12 @@ Playnite's own extension log: `%AppData%\Playnite\extensions.log` (installed ver
 
 ## License
 
-GPL-3.0, like Astrion Custom Dashboard.
+[![License: GPLv3](https://img.shields.io/badge/License-GPLv3-blue.svg?style=for-the-badge)](./LICENSE)
+
+---
+
+## ☕ Support
+
+If **Astrion Custom Dashboard** is useful to you, you can buy me a coffee!
+
+[![Ko-fi](https://img.shields.io/badge/Buy_me_a_coffee-Ko--fi-F16061?style=for-the-badge&logo=ko-fi&logoColor=white)](https://ko-fi.com/dckiller)
