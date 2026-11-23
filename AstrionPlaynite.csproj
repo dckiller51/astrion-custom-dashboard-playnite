@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Built by .github/workflows/build.yml on Windows. PlayniteSDK 6.2: Playnite only loads an
+       extension whose SDK major version matches and isn't newer than its own. -->
+  <PropertyGroup>
+    <TargetFramework>net462</TargetFramework>
+    <AssemblyName>AstrionCustomDashboard.Playnite</AssemblyName>
+    <RootNamespace>AstrionPlaynite</RootNamespace>
+    <LangVersion>7.3</LangVersion>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="PlayniteSDK" Version="6.2.0" ExcludeAssets="runtime" />
+    <Reference Include="System.Net" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="extension.yaml" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>
