@@ -24,7 +24,7 @@ namespace AstrionPlaynite
     public class AstrionPlugin : GenericPlugin
     {
         public const int Port = 8095;
-        public const string Version = "0.1.0";
+        public const string Version = "0.1.1";
 
         private static readonly ILogger log = LogManager.GetLogger();
 
@@ -188,14 +188,7 @@ namespace AstrionPlaynite
             var macs = new List<string>();
             try
             {
-                foreach (var nic in NetworkInterface.GetAllNetworkInterfaces())
-                {
-                    if (nic.OperationalStatus != OperationalStatus.Up) continue;
-                    if (nic.NetworkInterfaceType == NetworkInterfaceType.Loopback || nic.NetworkInterfaceType == NetworkInterfaceType.Tunnel) continue;
-                    var b = nic.GetPhysicalAddress().GetAddressBytes();
-                    if (b.Length != 6) continue;
-                    macs.Add(string.Join(":", b.Select(x => x.ToString("x2"))));
-                }
+                macs = WakeMacs();
             }
             catch (Exception e)
             {
@@ -213,6 +206,39 @@ namespace AstrionPlaynite
             j.EndArray();
             j.End();
             return j.ToString();
+        }
+
+        private static readonly string[] VirtualWords = { "virtual", "hyper-v", "vethernet", "vmware", "virtualbox", "vpn", "tap-", "tun", "wireguard", "tailscale", "zerotier", "hamachi", "bluetooth", "loopback", "npcap", "docker", "wsl" };
+
+        /**
+         * The MAC addresses that can wake this PC, best first: a physical wired card with a gateway
+         * (the one Wake-on-LAN reaches when the PC is off), then Wi-Fi; virtual cards (Hyper-V, VPN,
+         * VirtualBox…) last, as they never wake anything.
+         */
+        private static List<string> WakeMacs()
+        {
+            var ranked = new List<KeyValuePair<int, string>>();
+            foreach (var nic in NetworkInterface.GetAllNetworkInterfaces())
+            {
+                if (nic.OperationalStatus != OperationalStatus.Up) continue;
+                if (nic.NetworkInterfaceType == NetworkInterfaceType.Loopback || nic.NetworkInterfaceType == NetworkInterfaceType.Tunnel) continue;
+                var b = nic.GetPhysicalAddress().GetAddressBytes();
+                if (b.Length != 6) continue;
+                var text = ((nic.Name ?? "") + " " + (nic.Description ?? "")).ToLowerInvariant();
+                var isVirtual = VirtualWords.Any(w => text.Contains(w));
+                var hasGateway = false;
+                try
+                {
+                    hasGateway = nic.GetIPProperties().GatewayAddresses.Any(g => g.Address.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork && !g.Address.ToString().StartsWith("0."));
+                }
+                catch (Exception)
+                {
+                }
+                var rank = (isVirtual ? 100 : 0) + (hasGateway ? 0 : 10) + (nic.NetworkInterfaceType == NetworkInterfaceType.Ethernet ? 0 : 1);
+                ranked.Add(new KeyValuePair<int, string>(rank, string.Join(":", b.Select(x => x.ToString("x2")))));
+                log.Info("Astrion Custom Dashboard: network card " + nic.Name + " (" + nic.Description + "), rank " + rank);
+            }
+            return ranked.OrderBy(r => r.Key).Select(r => r.Value).Distinct().ToList();
         }
 
         private string StateJson()
