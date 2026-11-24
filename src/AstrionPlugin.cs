@@ -7,10 +7,12 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Net;
 using System.Net.NetworkInformation;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading;
 
 namespace AstrionPlaynite
@@ -24,7 +26,7 @@ namespace AstrionPlaynite
     public class AstrionPlugin : GenericPlugin
     {
         public const int Port = 8095;
-        public const string Version = "0.1.1";
+        public const string Version = "0.1.2";
 
         private static readonly ILogger log = LogManager.GetLogger();
 
@@ -129,10 +131,12 @@ namespace AstrionPlaynite
         {
             var path = req.Path;
             if (req.Method == "GET" && path == "/info") return HttpResponse.Json(InfoJson());
-            if (req.Method == "GET" && path.StartsWith("/cover/")) return Cover(path.Substring(7));
+            if (req.Method == "GET" && path.StartsWith("/cover/")) return Picture(path.Substring(7), g => g.CoverImage);
+            if (req.Method == "GET" && path.StartsWith("/background/")) return Picture(path.Substring(12), g => g.BackgroundImage);
             if (!Authorized(req)) return HttpResponse.Error(401, "wrong or missing code (X-Astrion-Code)");
             if (req.Method == "GET" && path == "/state") return HttpResponse.Json(StateJson());
             if (req.Method == "GET" && path == "/games") return HttpResponse.Json(OnUi(GamesJson));
+            if (req.Method == "GET" && path.StartsWith("/game/")) return Details(path.Substring(6));
             if (req.Method == "POST" && path.StartsWith("/start/")) return Start(path.Substring(7));
             if (req.Method == "POST" && path.StartsWith("/power/")) return Power(path.Substring(7));
             return HttpResponse.Error(404, "not found");
@@ -283,17 +287,73 @@ namespace AstrionPlaynite
             j.End();
         }
 
-        private HttpResponse Cover(string id)
+        /// <summary>A game's cover or background image, as Playnite keeps it (a file, or a web address).</summary>
+        private HttpResponse Picture(string id, Func<Game, string> which)
         {
             var g = Find(id);
-            if (g == null || string.IsNullOrEmpty(g.CoverImage)) return HttpResponse.Error(404, "no cover");
-            string file;
-            if (g.CoverImage.StartsWith("http", StringComparison.OrdinalIgnoreCase)) return HttpResponse.Redirect(g.CoverImage);
-            file = OnUi(() => PlayniteApi.Database.GetFullFilePath(g.CoverImage));
-            if (string.IsNullOrEmpty(file) || !File.Exists(file)) return HttpResponse.Error(404, "no cover");
+            var image = g == null ? null : which(g);
+            if (string.IsNullOrEmpty(image)) return HttpResponse.Error(404, "no picture");
+            if (image.StartsWith("http", StringComparison.OrdinalIgnoreCase)) return HttpResponse.Redirect(image);
+            var file = OnUi(() => PlayniteApi.Database.GetFullFilePath(image));
+            if (string.IsNullOrEmpty(file) || !File.Exists(file)) return HttpResponse.Error(404, "no picture");
             var ext = Path.GetExtension(file).ToLowerInvariant();
             var type = ext == ".png" ? "image/png" : ext == ".webp" ? "image/webp" : ext == ".gif" ? "image/gif" : "image/jpeg";
             return new HttpResponse(200, type, File.ReadAllBytes(file)) { CacheSeconds = 86400 };
+        }
+
+        /// <summary>A game's sheet for the remote: its description as plain text, genres, studios, year, scores, play time.</summary>
+        private HttpResponse Details(string id)
+        {
+            var g = Find(id);
+            if (g == null) return HttpResponse.Error(404, "no such game");
+            return HttpResponse.Json(OnUi(() =>
+            {
+                var j = new JsonWriter();
+                j.Begin();
+                j.Prop("id", g.Id.ToString());
+                j.Prop("name", g.Name ?? "");
+                j.Prop("description", PlainText(g.Description));
+                Names(j, "genres", g.Genres);
+                Names(j, "developers", g.Developers);
+                Names(j, "publishers", g.Publishers);
+                Names(j, "platforms", g.Platforms);
+                j.Prop("year", (long)(g.ReleaseYear ?? 0));
+                j.Prop("critic", (long)(g.CriticScore ?? 0));
+                j.Prop("community", (long)(g.CommunityScore ?? 0));
+                j.Prop("playtime", (long)g.Playtime);
+                j.Prop("lastPlayed", g.LastActivity.HasValue ? (long)(g.LastActivity.Value.ToUniversalTime() - Epoch).TotalSeconds : 0L);
+                j.Prop("cover", !string.IsNullOrEmpty(g.CoverImage));
+                j.Prop("background", !string.IsNullOrEmpty(g.BackgroundImage));
+                j.End();
+                return j.ToString();
+            }));
+        }
+
+        private static void Names<T>(JsonWriter j, string key, IEnumerable<T> items) where T : DatabaseObject
+        {
+            j.Key(key);
+            j.BeginArray();
+            if (items != null)
+            {
+                foreach (var name in items.Where(i => i != null && !string.IsNullOrWhiteSpace(i.Name)).Select(i => i.Name).Distinct()) j.Value(name);
+            }
+            j.EndArray();
+        }
+
+        private const int MaxDescription = 4000;
+
+        /// <summary>A description written in HTML (as metadata sources give it) as plain text: paragraphs kept, tags dropped.</summary>
+        private static string PlainText(string html)
+        {
+            if (string.IsNullOrWhiteSpace(html)) return "";
+            var text = Regex.Replace(html, @"<\s*(br|/p|/div|/li|/h[1-6])\s*/?>", "\n", RegexOptions.IgnoreCase);
+            text = Regex.Replace(text, @"<\s*li[^>]*>", "• ", RegexOptions.IgnoreCase);
+            text = Regex.Replace(text, @"<[^>]+>", "");
+            text = WebUtility.HtmlDecode(text);
+            text = Regex.Replace(text, @"[ \t\r\f\v]+", " ");
+            text = Regex.Replace(text, @" *\n *", "\n");
+            text = Regex.Replace(text, @"\n{3,}", "\n\n").Trim();
+            return text.Length > MaxDescription ? text.Substring(0, MaxDescription).TrimEnd() + "…" : text;
         }
 
         private HttpResponse Start(string id)

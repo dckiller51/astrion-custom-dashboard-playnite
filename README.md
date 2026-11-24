@@ -11,7 +11,7 @@ A [Playnite](https://playnite.link) extension that lets the [Astrion Custom Dash
 remote see and drive your gaming PC, with no Home Assistant:
 
 - the game running, with its cover
-- your installed games, started from the remote
+- your installed games as covers, each with its sheet (description, genres, studios, play time), started from the remote
 - turning the PC on (Wake-on-LAN, from the remote) and off
 
 <p align="center">
@@ -41,11 +41,13 @@ A small HTTP server on port **8095** of the PC, for the remote on your local net
 | `GET /info` | the PC's name and MAC address (for Wake-on-LAN) |
 | `GET /state` | the game running |
 | `GET /games` | the installed games, not hidden, most recently played first |
+| `GET /game/<id>` | a game's sheet: description (plain text), genres, developers, publishers, platforms, year, scores, play time |
 | `GET /cover/<id>` | a game's cover |
+| `GET /background/<id>` | a game's background image |
 | `POST /start/<id>` | starts a game |
 | `POST /power/sleep`, `shutdown`, `restart` | the PC |
 
-Every call but `/info` and the covers needs the code (header `X-Astrion-Code`). The code is kept in
+Every call but `/info`, the covers and the backgrounds needs the code (header `X-Astrion-Code`). The code is kept in
 Playnite's extension data folder (`code.txt`); delete that file and restart Playnite for a new one.
 
 ## Logs
