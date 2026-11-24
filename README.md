@@ -39,7 +39,7 @@ A small HTTP server on port **8095** of the PC, for the remote on your local net
 | | |
 |---|---|
 | `GET /info` | the PC's name and MAC address (for Wake-on-LAN) |
-| `GET /state` | the game running |
+| `GET /state` | the game running, and whether Windows is locked (the remote then unlocks it first, with [Astrion PC Unlock](https://github.com/dckiller51/astrion-custom-dashboard-pc-unlock)) |
 | `GET /games` | the installed games, not hidden, most recently played first |
 | `GET /game/<id>` | a game's sheet: description (plain text), genres, developers, publishers, platforms, year, scores, play time |
 | `GET /cover/<id>` | a game's cover |

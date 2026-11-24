@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using Microsoft.Win32;
 using System.Net;
 using System.Net.NetworkInformation;
 using System.Runtime.InteropServices;
@@ -35,6 +36,9 @@ namespace AstrionPlaynite
         private string code;
         private volatile Game running;
 
+        /// <summary>Windows' session is locked (the sign-in screen shows): the remote then unlocks it before starting a game.</summary>
+        private volatile bool locked;
+
         public override Guid Id { get; } = Guid.Parse("6f1c9a52-3d47-4e0b-9a1e-5b7f2c8d4a31");
 
         public AstrionPlugin(IPlayniteAPI api) : base(api)
@@ -56,11 +60,19 @@ namespace AstrionPlaynite
                 log.Error(e, "Astrion Custom Dashboard: can't listen on port " + Port);
             }
             ShowCode();
+            SystemEvents.SessionSwitch += OnSessionSwitch;
         }
 
         public override void OnApplicationStopped(OnApplicationStoppedEventArgs args)
         {
+            SystemEvents.SessionSwitch -= OnSessionSwitch;
             if (server != null) server.Stop();
+        }
+
+        private void OnSessionSwitch(object sender, SessionSwitchEventArgs e)
+        {
+            if (e.Reason == SessionSwitchReason.SessionLock) locked = true;
+            else if (e.Reason == SessionSwitchReason.SessionUnlock || e.Reason == SessionSwitchReason.SessionLogon) locked = false;
         }
 
         public override void OnGameStarted(OnGameStartedEventArgs args)
@@ -253,6 +265,7 @@ namespace AstrionPlaynite
             j.Key("running");
             if (g == null) j.Null();
             else WriteGame(j, g);
+            j.Prop("locked", locked);
             j.End();
             return j.ToString();
         }
