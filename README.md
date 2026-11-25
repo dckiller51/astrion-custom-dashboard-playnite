@@ -13,6 +13,7 @@ remote see and drive your gaming PC, with no Home Assistant:
 - the game running, with its cover
 - your installed games as covers, each with its sheet (description, genres, studios, play time), started from the remote
 - turning the PC on (Wake-on-LAN, from the remote) and off
+- Playnite in fullscreen when the remote starts a game, and left as it is when you turn the PC on yourself
 
 <p align="center">
   <img src="images/playing-diablo-iv.png" width="240" alt="The remote showing Diablo IV running on the PC, with its cover">
@@ -38,13 +39,14 @@ A small HTTP server on port **8095** of the PC, for the remote on your local net
 
 | | |
 |---|---|
-| `GET /info` | the PC's name and MAC address (for Wake-on-LAN) |
-| `GET /state` | the game running, and whether Windows is locked (the remote then unlocks it first, with [Astrion PC Unlock](https://github.com/dckiller51/astrion-custom-dashboard-pc-unlock)) |
+| `GET /info` | the PC's name, its MAC address (for Wake-on-LAN) and Playnite's mode (`fullscreen` or `desktop`) |
+| `GET /state` | the game running, Playnite's mode, and whether Windows is locked (its lock screen is up, also right after a wake from sleep) (the remote then unlocks it first, with [Astrion PC Unlock](https://github.com/dckiller51/astrion-custom-dashboard-pc-unlock)) |
 | `GET /games` | the installed games, not hidden, most recently played first |
 | `GET /game/<id>` | a game's sheet: description (plain text), genres, developers, publishers, platforms, year, scores, play time |
 | `GET /cover/<id>` | a game's cover |
 | `GET /background/<id>` | a game's background image |
 | `POST /start/<id>` | starts a game |
+| `POST /mode/fullscreen`, `desktop` | switches Playnite to that mode (Playnite restarts in it, with the extension) |
 | `POST /power/sleep`, `shutdown`, `restart` | the PC |
 
 Every call but `/info`, the covers and the backgrounds needs the code (header `X-Astrion-Code`). The code is kept in

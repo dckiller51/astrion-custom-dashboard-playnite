@@ -27,7 +27,7 @@ namespace AstrionPlaynite
     public class AstrionPlugin : GenericPlugin
     {
         public const int Port = 8095;
-        public const string Version = "0.1.2";
+        public const string Version = "0.1.3";
 
         private static readonly ILogger log = LogManager.GetLogger();
 
@@ -67,6 +67,53 @@ namespace AstrionPlaynite
         {
             SystemEvents.SessionSwitch -= OnSessionSwitch;
             if (server != null) server.Stop();
+        }
+
+        /**
+         * Windows shows its sign-in or lock screen. Its LogonUI process runs exactly then; checked
+         * when asked, it's right at once after a wake, when the session-switch event may not have
+         * reached Playnite yet (0.1.3).
+         */
+        private bool IsLocked()
+        {
+            try
+            {
+                if (Process.GetProcessesByName("LogonUI").Length > 0) return true;
+            }
+            catch (Exception)
+            {
+            }
+            return locked;
+        }
+
+        /// <summary>"desktop" or "fullscreen": the Playnite window the remote finds (0.1.3).</summary>
+        private string ModeName()
+        {
+            try
+            {
+                return PlayniteApi.ApplicationInfo.Mode == ApplicationMode.Fullscreen ? "fullscreen" : "desktop";
+            }
+            catch (Exception)
+            {
+                return "desktop";
+            }
+        }
+
+        /**
+         * Switches Playnite to fullscreen or desktop (0.1.3), the way its own command line does it:
+         * launched with --startfullscreen / --startdesktop while it runs, Playnite tells the running
+         * one to switch. Playnite restarts in the other mode, and so does this extension: the
+         * remote waits for it to answer again.
+         */
+        private HttpResponse SwitchMode(string mode)
+        {
+            if (mode != "fullscreen" && mode != "desktop") return HttpResponse.Error(404, "unknown mode");
+            if (ModeName() == mode) return HttpResponse.Json("{\"ok\":true,\"mode\":\"" + mode + "\"}");
+            var exe = Path.Combine(PlayniteApi.Paths.ApplicationPath ?? "", "Playnite.DesktopApp.exe");
+            if (!File.Exists(exe)) return HttpResponse.Error(500, "Playnite.DesktopApp.exe not found");
+            log.Info("Astrion Custom Dashboard: switching to " + mode);
+            Process.Start(new ProcessStartInfo(exe, mode == "fullscreen" ? "--startfullscreen" : "--startdesktop") { UseShellExecute = false });
+            return HttpResponse.Json("{\"ok\":true,\"mode\":\"" + mode + "\",\"switching\":true}");
         }
 
         private void OnSessionSwitch(object sender, SessionSwitchEventArgs e)
@@ -151,6 +198,7 @@ namespace AstrionPlaynite
             if (req.Method == "GET" && path.StartsWith("/game/")) return Details(path.Substring(6));
             if (req.Method == "POST" && path.StartsWith("/start/")) return Start(path.Substring(7));
             if (req.Method == "POST" && path.StartsWith("/power/")) return Power(path.Substring(7));
+            if (req.Method == "POST" && path.StartsWith("/mode/")) return SwitchMode(path.Substring(6));
             return HttpResponse.Error(404, "not found");
         }
 
@@ -216,6 +264,7 @@ namespace AstrionPlaynite
             j.Prop("plugin", Version);
             j.Prop("name", Environment.MachineName);
             j.Prop("port", Port);
+            j.Prop("mode", ModeName());
             j.Key("macs");
             j.BeginArray();
             foreach (var m in macs) j.Value(m);
@@ -265,7 +314,8 @@ namespace AstrionPlaynite
             j.Key("running");
             if (g == null) j.Null();
             else WriteGame(j, g);
-            j.Prop("locked", locked);
+            j.Prop("locked", IsLocked());
+            j.Prop("mode", ModeName());
             j.End();
             return j.ToString();
         }
